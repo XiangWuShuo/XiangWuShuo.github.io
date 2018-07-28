@@ -5,9 +5,9 @@
   <subtitle>享物说技术部维护</subtitle>
   <link href="/atom.xml" rel="self"/>
   
-  <link href="XiangWuShuo.github.io/"/>
+  <link href="https://xiangwushuo.github.io/"/>
   <updated>2018-07-28T09:47:40.314Z</updated>
-  <id>XiangWuShuo.github.io/</id>
+  <id>https://xiangwushuo.github.io/</id>
   
   <author>
     <name>享物说</name>
@@ -18,8 +18,8 @@
   
   <entry>
     <title>Hello World</title>
-    <link href="XiangWuShuo.github.io/posts/hello-world/"/>
-    <id>XiangWuShuo.github.io/posts/hello-world/</id>
+    <link href="https://xiangwushuo.github.io/posts/hello-world/"/>
+    <id>https://xiangwushuo.github.io/posts/hello-world/</id>
     <published>2018-07-28T09:47:40.314Z</published>
     <updated>2018-07-28T09:47:40.314Z</updated>
     
