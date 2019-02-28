@@ -268,15 +268,369 @@
             <div class="postShorten-header">
                 <h1 class="postShorten-title">
                     
+                        <a class="link-unstyled" href="/posts/Flutter-Android-Webview/">
+                            Flutter 与 Android 的 WebView 对比
+                        </a>
+                    
+                </h1>
+                <div class="postShorten-meta">
+    <time datetime="2019-02-28T15:01:31+08:00">
+	
+		    2月 28, 2019
+    	
+    </time>
+    
+</div>
+
+            </div>
+            
+                <div class="postShorten-content">
+                    <h2 id="前言"><a href="#前言" class="headerlink" title="前言"></a>前言</h2><p>自从 google 推出 flutter 跨平台开发框架以来，flutter 在各个技术论坛里被炒得如日中天。</p>
+<p>说到跨平台开发，就不得不提 WebView，WebView 可以说是最廉价的跨平台开发方案。我们知道，flutter 可以和 native 混合开发，它们可以互相调用。那么当我们进行混合开发的时候，如果需要使用 WebView，我们应该调用原生的 WebView 还是使用 flutter 自己实现 WebView 呢？如果用 flutter 自己实现 WebView，它的性能与 native 相比如何呢？今天我们就以 android 为例从几个不同的维度来实际测试一下！</p>
+<h2 id="Flutter-实现-WebView"><a href="#Flutter-实现-WebView" class="headerlink" title="Flutter 实现 WebView"></a>Flutter 实现 WebView</h2><p>flutter 官方是没有 WebView 组件的，不过强大的 <a href="https://medium.com/flutter-community" target="_blank" rel="noopener">flutter-community</a> 论坛考虑到广大开发者的需求，开发了 <a href="https://pub.flutter-io.cn/packages/flutter_webview_plugin" target="_blank" rel="noopener">flutter_webview_plugin</a> 插件，方便在 flutter 中使用使用 WebView。</p>
+<p>集成方式很简单，在 pubspec.yaml 文件中：</p>
+<figure class="highlight dart"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">dependencies:</span><br><span class="line">  flutter:</span><br><span class="line">    sdk: flutter</span><br><span class="line">  flutter_webview_plugin: ^<span class="number">0.3</span><span class="number">.0</span>+<span class="number">2</span></span><br></pre></td></tr></table></figure>
+<p>接下来所有的对比都是基于 Android 原生的 WebView 和 flutter_webview_plugin 插件，为了严谨，并未对第三方 WebView 作对比。</p>
+<blockquote>
+<p>测试手机：小米8SE <br><br>系统：Android 8.1.0</p>
+</blockquote>
+<h2 id="加载速度对比"><a href="#加载速度对比" class="headerlink" title="加载速度对比"></a>加载速度对比</h2><p>测试网页打开的速度，只需要获取 WebView 在开始加载网页和网页加载完成时的时间戳，时间戳的差即为打开网页的时间，我们分别在 Android 原生和 flutter 中的相应位置打印 log：</p>
+<figure class="highlight kotlin"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line">webView?.webViewClient = <span class="keyword">object</span> : WebViewClient() &#123;</span><br><span class="line">    <span class="keyword">override</span> <span class="function"><span class="keyword">fun</span> <span class="title">onPageStarted</span><span class="params">(view: <span class="type">WebView</span>?, url: <span class="type">String</span>?, favicon: <span class="type">Bitmap</span>?)</span></span> &#123;</span><br><span class="line">        Log.d(TAG, <span class="string">"onPageStarted:"</span> + System.currentTimeMillis())</span><br><span class="line">        <span class="keyword">super</span>.onPageStarted(view, url, favicon)</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">override</span> <span class="function"><span class="keyword">fun</span> <span class="title">onPageFinished</span><span class="params">(view: <span class="type">WebView</span>?, url: <span class="type">String</span>?)</span></span> &#123;</span><br><span class="line">        Log.d(TAG, <span class="string">"onPageFinished:"</span> + System.currentTimeMillis())</span><br><span class="line">        <span class="keyword">super</span>.onPageFinished(view, url)</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<figure class="highlight dart"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line">flutterWebViewPlugin.onStateChanged.listen((state) &#123;</span><br><span class="line">  <span class="keyword">if</span> (state.type == WebViewState.finishLoad) &#123;</span><br><span class="line">    <span class="built_in">print</span>(<span class="string">'finishLoad:'</span> + <span class="built_in">DateTime</span>.now().millisecondsSinceEpoch.toString());</span><br><span class="line">    setState(() &#123;</span><br><span class="line">      isLoad = <span class="keyword">false</span>;</span><br><span class="line">    &#125;);</span><br><span class="line">  &#125; <span class="keyword">else</span> <span class="keyword">if</span> (state.type == WebViewState.startLoad) &#123;</span><br><span class="line">    <span class="built_in">print</span>(<span class="string">'startLoad:'</span> + <span class="built_in">DateTime</span>.now().millisecondsSinceEpoch.toString());</span><br><span class="line">    setState(() &#123;</span><br><span class="line">      isLoad = <span class="keyword">true</span>;</span><br><span class="line">    &#125;);</span><br><span class="line">  &#125;</span><br><span class="line">&#125;);</span><br></pre></td></tr></table></figure>
+<p>为了使差异更明显，我们选择较为复杂的 <a href="https://www.sina.com.cn/" target="_blank" rel="noopener">新浪首页</a> 进行加载的对比，为了减小网络对加载速度的影响，我们让手机连接同一个网络，分别进行 10 次测试然后取平均值，另外，我们需要关闭 WebView 的缓存，防止缓存对加载速度产生影响：</p>
+<figure class="highlight kotlin"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">webView?.settings?.cacheMode = WebSettings.LOAD_NO_CACHE</span><br></pre></td></tr></table></figure>
+<figure class="highlight dart"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">WebviewScaffold(</span><br><span class="line">  key: _scaffoldKey,</span><br><span class="line">  url: widget.url,</span><br><span class="line">  clearCache: <span class="keyword">true</span>,</span><br><span class="line">  appCacheEnabled: <span class="keyword">false</span>,</span><br><span class="line">  .</span><br><span class="line">  .</span><br><span class="line">  .</span><br><span class="line">);</span><br></pre></td></tr></table></figure>
+<p>下面使笔者进行 10 次测试所得到的数据：</p>
+<table>
+<thead>
+<tr>
+<th></th>
+<th>Android WebView</th>
+<th>flutter_webview_plugin</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>0</td>
+<td>2731</td>
+<td>2442</td>
+</tr>
+<tr>
+<td>1</td>
+<td>2502</td>
+<td>2623</td>
+</tr>
+<tr>
+<td>2</td>
+<td>2747</td>
+<td>2422</td>
+</tr>
+<tr>
+<td>3</td>
+<td>2652</td>
+<td>2323</td>
+</tr>
+<tr>
+<td>4</td>
+<td>2553</td>
+<td>2596</td>
+</tr>
+<tr>
+<td>5</td>
+<td>2645</td>
+<td>2379</td>
+</tr>
+<tr>
+<td>6</td>
+<td>2670</td>
+<td>2342</td>
+</tr>
+<tr>
+<td>7</td>
+<td>2691</td>
+<td>2218</td>
+</tr>
+<tr>
+<td>8</td>
+<td>3773</td>
+<td>2429</td>
+</tr>
+<tr>
+<td>9</td>
+<td>2631</td>
+<td>2453</td>
+</tr>
+<tr>
+<td>avg</td>
+<td>2759.5</td>
+<td>2421.7</td>
+</tr>
+</tbody>
+</table>
+<p>可以发现，相同环境下 flutter_webview_plugin 的加载速度比 native WebView 略快，但是差异不明显，基本可以忽略。</p>
+<p>结论：flutter_webview_plugin 的加载速度比 native WebView 略快。</p>
+<h2 id="内存占用对比"><a href="#内存占用对比" class="headerlink" title="内存占用对比"></a>内存占用对比</h2><p>可以使用 AndroidStudio 自带的 profiler 工具来进行占用内存的测试，我们在 flutter 程序中同时集成调用 native WebView 和 flutter_webview_plugin 来打开淘宝首页和新浪首页的方法，在程序刚运行的时候内存占用如下图：</p>
+<p><img src="https://user-gold-cdn.xitu.io/2019/2/27/1692dac911f75635?w=940&amp;h=206&amp;f=png&amp;s=7447" alt=""></p>
+<p>然后用 WebView 打开淘宝首页：</p>
+<p><img src="https://user-gold-cdn.xitu.io/2019/2/27/1692db0536700223?w=946&amp;h=176&amp;f=png&amp;s=7872" alt=""></p>
+<p>用 flutter_webview_plugin 打开淘宝首页：</p>
+<p><img src="https://user-gold-cdn.xitu.io/2019/2/27/1692db12ba8b0c95?w=948&amp;h=171&amp;f=png&amp;s=14653" alt=""></p>
+<p>可以发现，用 WebView 打开淘宝首页内存基本无变化，但是用 flutter_webview_plugin 打开淘宝首页内存有明显的增加，且波动较大。</p>
+<p>结论：flutter_webview_plugin 相对 native WebView 而言，占用内存较大。</p>
+<h2 id="HTML5-兼容性对比"><a href="#HTML5-兼容性对比" class="headerlink" title="HTML5 兼容性对比"></a>HTML5 兼容性对比</h2><p>可以在 <a href="http://html5test.com/" target="_blank" rel="noopener">html5test</a> 中对浏览器的兼容性进行评分，通过测试发现 native WebView 和 flutter_webview_plugin 的得分分别如下：</p>
+<table>
+<thead>
+<tr>
+<th style="text-align:center"></th>
+<th style="text-align:center"></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:center"><img src="https://user-gold-cdn.xitu.io/2019/2/27/1692dd08f7f91682?w=1080&amp;h=2244&amp;f=png&amp;s=181497" alt=""></td>
+<td style="text-align:center"><img src="https://user-gold-cdn.xitu.io/2019/2/27/1692dd42717f9fa9?w=1080&amp;h=2244&amp;f=png&amp;s=179730" alt=""></td>
+</tr>
+</tbody>
+</table>
+<p>发现在小米8SE手机上，native WebView 和 flutter_webview_plugin 的 html5 兼容性得分都是 501。</p>
+<p>结论：native WebView 和 flutter_webview_plugin 的 html5 兼容性无明显差异。</p>
+<h2 id="总结"><a href="#总结" class="headerlink" title="总结"></a>总结</h2><p>我们对 native WebView 和 flutter_webview_plugin 分别进行了网页加载速度、占用内存和 html5 兼容性作了对比，发现 native WebView 占用内存更小，网页加载速度和 html5 的兼容性无明显差异。</p>
+<p>在实际使用中，由于 flutter_webview_plugin 并不存在于 widget 树中，所以不能在 flutter_webview_plugin 中使用如 snackbars, dialogs…这些通知交互 widget。但是 flutter_webview_plugin 具有跨平台的优势，如果需要同时 flutter 项目中同时在 Android 和 iOS 端使用 WebView，建议使用 flutter_webview_plugin，否则，建议使用 native WebView。</p>
+<hr>
+<p>再读一篇类似文章？推荐阅读姊妹篇：</p>
+<p><a href="https://xiangwushuo.github.io/posts/Flutter-iOS-WebView">Flutter 与 iOS 的 WebView 对比</a></p>
+<hr>
+<blockquote>
+<p>如有任何知识产权、版权问题或理论错误，还请指正。<br><a href="https://xiangwushuo.github.io/posts/Flutter-Android-Webview">https://xiangwushuo.github.io/posts/Flutter-Android-Webview</a><br>本文作者 Zackratos，转载请注明原作者及以上信息。</p>
+</blockquote>
+
+                    
+                        
+
+                    
+                    
+                        <p>
+                            <a href="/posts/Flutter-Android-Webview/#post-footer" class="postShorten-excerpt_link link">
+                                评论和共享
+                            </a>
+                        </p>
+                    
+                </div>
+            
+        </div>
+        
+    </article>
+    
+    
+    <article class="postShorten postShorten--thumbnailimg-bottom">
+        <div class="postShorten-wrap">
+            
+            <div class="postShorten-header">
+                <h1 class="postShorten-title">
+                    
+                        <a class="link-unstyled" href="/posts/Flutter-iOS-WebView/">
+                            Flutter 与 iOS 的 WebView 对比
+                        </a>
+                    
+                </h1>
+                <div class="postShorten-meta">
+    <time datetime="2019-02-28T15:01:31+08:00">
+	
+		    2月 28, 2019
+    	
+    </time>
+    
+</div>
+
+            </div>
+            
+                <div class="postShorten-content">
+                    <p>本文对比的是 UIWebView、WKWebView、flutter_webview_plugin（在 iOS 中使用的是 WKWebView）的加载速度，内存使用情况。</p>
+<blockquote>
+<p>测试手机：iPhoneX <br><br>系统：iOS12.0</p>
+</blockquote>
+<h2 id="加载速度对比"><a href="#加载速度对比" class="headerlink" title="加载速度对比"></a>加载速度对比</h2><p>测试网页打开的速度，只需要获取 WebView 在开始加载网页和网页加载完成时的时间戳，时间戳的差即为打开网页的时间。</p>
+<h3 id="WKWebView"><a href="#WKWebView" class="headerlink" title="WKWebView"></a>WKWebView</h3><figure class="highlight swift"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">extension</span> <span class="title">WKWebViewVC</span>: <span class="title">WKNavigationDelegate</span> </span>&#123;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">public</span> <span class="function"><span class="keyword">func</span> <span class="title">webView</span><span class="params">(<span class="number">_</span> webView: WKWebView, decidePolicyFor navigationAction: WKNavigationAction, decisionHandler: @escaping <span class="params">(WKNavigationActionPolicy)</span></span></span> -&gt; <span class="type">Void</span>) &#123;</span><br><span class="line">        decisionHandler(.allow)</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">public</span> <span class="function"><span class="keyword">func</span> <span class="title">webView</span><span class="params">(<span class="number">_</span> webView: WKWebView, didStartProvisionalNavigation navigation: WKNavigation!)</span></span> &#123;</span><br><span class="line">        startTime = <span class="type">Int</span>(<span class="type">Date</span>().timeIntervalSince1970 * <span class="number">1000</span>)</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">public</span> <span class="function"><span class="keyword">func</span> <span class="title">webView</span><span class="params">(<span class="number">_</span> webView: WKWebView, didFinish navigation: WKNavigation!)</span></span> &#123;</span><br><span class="line">        <span class="keyword">let</span> finishTime: <span class="type">Int</span> = <span class="type">Int</span>(<span class="type">Date</span>().timeIntervalSince1970 * <span class="number">1000</span>)</span><br><span class="line">        <span class="built_in">print</span>(<span class="string">"WKWebView <span class="subst">\(finishTime - startTime)</span>"</span>)</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h3 id="UIWebView"><a href="#UIWebView" class="headerlink" title="UIWebView"></a>UIWebView</h3><figure class="highlight swift"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">extension</span> <span class="title">WebViewVC</span>: <span class="title">UIWebViewDelegate</span> </span>&#123;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">public</span> <span class="function"><span class="keyword">func</span> <span class="title">webViewDidStartLoad</span><span class="params">(<span class="number">_</span> webView: UIWebView)</span></span> &#123;</span><br><span class="line">        startTime = <span class="type">Int</span>(<span class="type">Date</span>().timeIntervalSince1970 * <span class="number">1000</span>)</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">public</span> <span class="function"><span class="keyword">func</span> <span class="title">webViewDidFinishLoad</span><span class="params">(<span class="number">_</span> webView: UIWebView)</span></span> &#123;</span><br><span class="line">        <span class="keyword">let</span> finishTime: <span class="type">Int</span> = <span class="type">Int</span>(<span class="type">Date</span>().timeIntervalSince1970 * <span class="number">1000</span>)</span><br><span class="line">        <span class="built_in">print</span>(<span class="string">"UIWebView <span class="subst">\(finishTime - startTime)</span>"</span>)</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h3 id="flutter-webview-plugin"><a href="#flutter-webview-plugin" class="headerlink" title="flutter_webview_plugin"></a>flutter_webview_plugin</h3><figure class="highlight dart"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line">flutterWebViewPlugin.onStateChanged.listen((state) &#123;</span><br><span class="line">    <span class="keyword">if</span> (state.type == WebViewState.finishLoad) &#123;</span><br><span class="line">        <span class="built_in">print</span>(<span class="string">'finishLoad:'</span> + <span class="built_in">DateTime</span>.now().millisecondsSinceEpoch.toString());</span><br><span class="line">        setState(() &#123;</span><br><span class="line">            isLoad = <span class="keyword">false</span>;</span><br><span class="line">        &#125;);</span><br><span class="line">    &#125; <span class="keyword">else</span> <span class="keyword">if</span> (state.type == WebViewState.startLoad) &#123;</span><br><span class="line">        <span class="built_in">print</span>(<span class="string">'startLoad:'</span> + <span class="built_in">DateTime</span>.now().millisecondsSinceEpoch.toString());</span><br><span class="line">        setState(() &#123;</span><br><span class="line">            isLoad = <span class="keyword">true</span>;</span><br><span class="line">        &#125;); </span><br><span class="line">    &#125;</span><br><span class="line">&#125;);</span><br></pre></td></tr></table></figure>
+<p>为了使差异更明显，我们选择较为复杂的 <a href="https://www.sina.com.cn/" target="_blank" rel="noopener">新浪首页</a> 进行加载的对比，为了减小网络对加载速度的影响，我们让手机连接同一个网络，分别进行 10 次测试然后取平均值，另外，我们需要关闭 WebView 的缓存，防止缓存对加载速度产生影响：</p>
+<figure class="highlight swift"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">private</span> <span class="function"><span class="keyword">func</span> <span class="title">delegateCache</span><span class="params">()</span></span> &#123;</span><br><span class="line">    <span class="keyword">let</span> cache = <span class="type">URLCache</span>.shared</span><br><span class="line">    cache.removeAllCachedResponses()</span><br><span class="line">    cache.diskCapacity = <span class="number">0</span></span><br><span class="line">    cache.memoryCapacity = <span class="number">0</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<figure class="highlight swift"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">private</span> <span class="function"><span class="keyword">func</span> <span class="title">deleteWebCache</span><span class="params">()</span></span> &#123;</span><br><span class="line">    <span class="keyword">let</span> websiteDataTypes: <span class="type">Set</span>&lt;<span class="type">String</span>&gt; = <span class="type">WKWebsiteDataStore</span>.allWebsiteDataTypes()</span><br><span class="line">    <span class="keyword">let</span> dateFrom = <span class="type">Date</span>.<span class="keyword">init</span>(timeIntervalSince1970: <span class="number">0</span>)</span><br><span class="line">    <span class="type">WKWebsiteDataStore</span>.<span class="keyword">default</span>().removeData(ofTypes: websiteDataTypes, modifiedSince: dateFrom) &#123;</span><br><span class="line"></span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<figure class="highlight dart"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">WebviewScaffold(</span><br><span class="line">    key: _scaffoldKey,</span><br><span class="line">    url: widget.url,</span><br><span class="line">    clearCache: <span class="keyword">true</span>,</span><br><span class="line">    appCacheEnabled: <span class="keyword">false</span>,</span><br><span class="line">    .</span><br><span class="line">    .</span><br><span class="line">    .</span><br><span class="line">);</span><br></pre></td></tr></table></figure>
+<p>下面使笔者进行 10 次测试所得到的数据：</p>
+<table>
+<thead>
+<tr>
+<th></th>
+<th>UIWebView</th>
+<th>WKWebView</th>
+<th>flutter_webview_plugin</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>0</td>
+<td>4009</td>
+<td>3384</td>
+<td>3582</td>
+</tr>
+<tr>
+<td>1</td>
+<td>2856</td>
+<td>3719</td>
+<td>2869</td>
+</tr>
+<tr>
+<td>2</td>
+<td>2773</td>
+<td>3258</td>
+<td>3221</td>
+</tr>
+<tr>
+<td>3</td>
+<td>2776</td>
+<td>3570</td>
+<td>3178</td>
+</tr>
+<tr>
+<td>4</td>
+<td>2933</td>
+<td>3386</td>
+<td>3092</td>
+</tr>
+<tr>
+<td>5</td>
+<td>2679</td>
+<td>3706</td>
+<td>2956</td>
+</tr>
+<tr>
+<td>6</td>
+<td>2583</td>
+<td>3707</td>
+<td>3038</td>
+</tr>
+<tr>
+<td>7</td>
+<td>3145</td>
+<td>2947</td>
+<td>3015</td>
+</tr>
+<tr>
+<td>8</td>
+<td>3654</td>
+<td>3038</td>
+<td>3634</td>
+</tr>
+<tr>
+<td>9</td>
+<td>3258</td>
+<td>3439</td>
+<td>3132</td>
+</tr>
+<tr>
+<td>avg</td>
+<td>3066.6</td>
+<td>3415.4</td>
+<td>3171.7</td>
+</tr>
+</tbody>
+</table>
+<p>结果让我有点惊讶，一直以为 WKWebView 会是个王者。结果看，速度上 WKWebView 略慢一点，不过总体差异不大（该结果仅仅是测试新浪的结果，仅供参考啦）。</p>
+<p>在这里，笔者又加了一个测试，尝试记录从 viewController 的 viewDidLoad 到 webview 的 didFinish 时间，测试了新浪的数据，如下：</p>
+<p><strong>UIWebViewA</strong>：  4970、3808、3815、4250、3556    avg(4079.8) （加载完所有页面）<br><strong>UIWebViewB</strong>：  4103、3124、3070、3256、2835   avg(3277.6)（加载sina完毕）<br><strong>WKWebView</strong>：  3672、3032、2892、2912、2739  avg(3049.4)<br><strong>flutter_webView</strong>：  4532、3901、4310、3496、3378  avg(3923.4)   </p>
+<p>其中可以看到，webView 有两行，UIWebViewB 的数据就是加载 sina 主站的时间；UIWebViewA 的数据是因为在加载完 sina 主站之后，新浪又加载了一个<a href="https://r.dmp.sina.cn/cm/sinaads_ck_wap.html，所以导致总时间延长，不过即使按照" target="_blank" rel="noopener">https://r.dmp.sina.cn/cm/sinaads_ck_wap.html，所以导致总时间延长，不过即使按照</a> UIWebViewB 的数据来比较，也是 wkWebView 略胜一筹。</p>
+<p>此处可以看出 flutter_webView 使用的是 wkwebView，所以它吃亏的主要原因是 flutter 包了一层。</p>
+<p>结论：<br>速度（didStart -&gt; didFinish） UIWebView &gt; flutter_webview &gt; WKWebView<br>速度（viewDidLoad -&gt; didFinish）WKWebView &gt; UIWebView &gt; flutter_webview</p>
+<h2 id="占用内存对比"><a href="#占用内存对比" class="headerlink" title="占用内存对比"></a>占用内存对比</h2><p>这里查看内存使用的是 Xcode 的 debug session 中的 memory，首先看之前测试时，连续打开十次新浪的内存情况：</p>
+<p><img src="https://upload-images.jianshu.io/upload_images/2122505-4a0c9b9074856ce9.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240" alt="UIWebView.png"></p>
+<p><img src="https://upload-images.jianshu.io/upload_images/2122505-ac60a6bbc00a4534.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240" alt="WKWebView.png"></p>
+<p><img src="https://upload-images.jianshu.io/upload_images/2122505-0e391ca3139dc61c.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240" alt="flutter_webView.png"></p>
+<p>接着我们在看一下打开淘宝首页的内存情况</p>
+<table>
+<thead>
+<tr>
+<th style="text-align:center"></th>
+<th style="text-align:center"></th>
+<th style="text-align:center"></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:center"><img src="https://upload-images.jianshu.io/upload_images/2122505-d49448a784236649.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240" alt="UIWebView.png"></td>
+<td style="text-align:center"><img src="https://upload-images.jianshu.io/upload_images/2122505-2d9151a9647db8ce.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240" alt="WKWebView.png"></td>
+<td style="text-align:center"><img src="https://upload-images.jianshu.io/upload_images/2122505-d4ec347664e74958.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240" alt="flutter_webView.png"></td>
+</tr>
+</tbody>
+</table>
+<p>从图上可以看出，WKWebView 在内存方面有很大的优势啊，UIWebView 的内存是真的伤啊，然后 debug 看了一下 flutter_webView，他使用的就是原生的 webView。</p>
+<p>他相比较原生 WKWebView 的内存开销稍大一点，从测试表现来看，一般大个 30 MB 左右。</p>
+<p>结论：内存 WKWebView &gt; flutter_webview &gt; UIWebView</p>
+<h2 id="HTML5-兼容性对比"><a href="#HTML5-兼容性对比" class="headerlink" title="HTML5 兼容性对比"></a>HTML5 兼容性对比</h2><p>可以在 <a href="http://html5test.com/" target="_blank" rel="noopener">html5test</a> 中对浏览器的兼容性进行评分，通过测试发现得分分别如下：</p>
+<table>
+<thead>
+<tr>
+<th style="text-align:center"></th>
+<th style="text-align:center"></th>
+<th style="text-align:center"></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:center"><img src="https://upload-images.jianshu.io/upload_images/2122505-b1cc15af0c4d33dd.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240" alt="UIWebView.png"></td>
+<td style="text-align:center"><img src="https://upload-images.jianshu.io/upload_images/2122505-9e9d50f60093f5e0.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240" alt="WKWebView.png"></td>
+<td style="text-align:center"><img src="https://upload-images.jianshu.io/upload_images/2122505-870ba7fd45d3250c.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240" alt="flutter_webView.png"></td>
+</tr>
+</tbody>
+</table>
+<p>因为 flutter 里使用的就是 WK，所以和原生的 WKWebView 一样都是 444 分，比 UIWebView 的 437 略胜一筹。</p>
+<p>结论：兼容性 WKWebView = flutter_webview &gt; UIWebView</p>
+<h2 id="总结"><a href="#总结" class="headerlink" title="总结"></a>总结</h2><ul>
+<li><strong>UIWebView</strong>: 速度相比较 WKWebView 稍快一点，但是内存是一大硬伤，所以只要条件允许，就不推荐使用了；</li>
+<li><strong>WKWebView</strong>: 速度略慢一点，不过差别不大，总体可以接受。是比UIWebView更好的选择，推荐使用；</li>
+<li><strong>flutter_webView_plugin</strong>：在iOS中使用的就是原生的WKWebView，所以总体和 native WKWebView 表现差不多。如果是混编项目中，因为它被包了一层，所以页面加载上存在一定的劣势，所以混编项目中仍然推荐使用 WKWebView。不过如果从多端考虑、以及项目可迁移等，那么使用也未尝不可，就是维护成本要增加一些，需要维护两套 webView。这个就需要根据自己的情况自己取舍了。</li>
+</ul>
+<hr>
+<p>再读一篇类似文章？推荐阅读姊妹篇：</p>
+<p><a href="https://xiangwushuo.github.io/posts/Flutter-Android-Webview">Flutter 与 Android 的 WebView 对比</a></p>
+<hr>
+<blockquote>
+<p>如有任何知识产权、版权问题或理论错误，还请指正。<br><a href="https://xiangwushuo.github.io/posts/Flutter-iOS-WebView">https://xiangwushuo.github.io/posts/Flutter-iOS-WebView</a><br>本文作者 <a href="https://github.com/rainymoodone" target="_blank" rel="noopener">Jay</a>，转载请注明原作者及以上信息。</p>
+</blockquote>
+
+                    
+                        
+
+                    
+                    
+                        <p>
+                            <a href="/posts/Flutter-iOS-WebView/#post-footer" class="postShorten-excerpt_link link">
+                                评论和共享
+                            </a>
+                        </p>
+                    
+                </div>
+            
+        </div>
+        
+    </article>
+    
+    
+    <article class="postShorten postShorten--thumbnailimg-bottom">
+        <div class="postShorten-wrap">
+            
+            <div class="postShorten-header">
+                <h1 class="postShorten-title">
+                    
                         <a class="link-unstyled" href="/posts/CodeT-Share/">
                             上海 T 沙龙移动实践日：大流量⼩程序的架构与性能优化
                         </a>
                     
                 </h1>
                 <div class="postShorten-meta">
-    <time datetime="2018-08-29T13:50:06+08:00">
+    <time datetime="2019-02-28T15:01:31+08:00">
 	
-		    8月 29, 2018
+		    2月 28, 2019
     	
     </time>
     
@@ -371,7 +725,7 @@
 </ol>
 <hr>
 <blockquote>
-<p>如有任何知识产权、版权问题或理论错误，还请指正。<br><a href="https://xiangwushuo.github.io/posts/CodeT-Share">https://xiangwushuo.github.io/posts/CodeT-Share</a><br>转载请注明原作者及以上信息。</p>
+<p>如有任何知识产权、版权问题或理论错误，还请指正。<br><a href="https://xiangwushuo.github.io/posts/CodeT-Share">https://xiangwushuo.github.io/posts/CodeT-Share</a><br>本文作者 <a href="https://github.com/EyreFree" target="_blank" rel="noopener">EyreFree</a>，转载请注明原作者及以上信息。</p>
 </blockquote>
 
                     
@@ -405,7 +759,7 @@
 
                 <footer id="footer" class="main-content-wrap">
     <span class="copyrights">
-        Copyrights &copy; 2018 享物说. All Rights Reserved.
+        Copyrights &copy; 2019 享物说. All Rights Reserved.
     </span>
 </footer>
 
@@ -477,7 +831,45 @@
                         <span class="media-meta">
                             <span class="media-date text-small">
                                 
-                                    2018年8月29日
+                                    2019年2月28日
+                                
+                            </span>
+                        </span>
+                        <div class="media-content hide-xs font-merryweather"></div>
+                    </div>
+                    <div style="clear:both;"></div>
+                    <hr>
+                </div>
+                
+                <div class="media">
+                    
+                    <div class="media-body">
+                        <a class="link-unstyled" href="https://xiangwushuo.github.io/posts/Flutter-Android-Webview/">
+                            <h3 class="media-heading">Flutter 与 Android 的 WebView 对比</h3>
+                        </a>
+                        <span class="media-meta">
+                            <span class="media-date text-small">
+                                
+                                    2019年2月28日
+                                
+                            </span>
+                        </span>
+                        <div class="media-content hide-xs font-merryweather"></div>
+                    </div>
+                    <div style="clear:both;"></div>
+                    <hr>
+                </div>
+                
+                <div class="media">
+                    
+                    <div class="media-body">
+                        <a class="link-unstyled" href="https://xiangwushuo.github.io/posts/Flutter-iOS-WebView/">
+                            <h3 class="media-heading">Flutter 与 iOS 的 WebView 对比</h3>
+                        </a>
+                        <span class="media-meta">
+                            <span class="media-date text-small">
+                                
+                                    2019年2月28日
                                 
                             </span>
                         </span>
@@ -494,7 +886,7 @@
                 data-message-zero="没有找到文章"
                 data-message-one="找到 1 篇文章"
                 data-message-other="找到 {n} 篇文章">
-                找到 1 篇文章
+                找到 3 篇文章
             </p>
         </div>
     </div>
