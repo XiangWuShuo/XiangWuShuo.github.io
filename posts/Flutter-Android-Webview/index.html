@@ -17,7 +17,7 @@
     
         <link rel="alternate" type="application/atom+xml" title="RSS" href="/atom.xml">
     
-    <script type="application/ld+json">{"@context":"http://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"享物说","sameAs":["https://www.xiangwushuo.com/","https://github.com/XiangWuShuo","https://weibo.com/u/6392701049","https://cn.linkedin.com/company/%E4%BA%AB%E7%89%A9%E8%AF%B4","https://www.lagou.com/gongsi/316814.html","mailto:developer@xiangwushuo.com"],"image":"https://www.gravatar.com/avatar/a5c1ed814269001a19150c512bc1efe0"},"articleBody":"前言自从 google 推出 flutter 跨平台开发框架以来，flutter 在各个技术论坛里被炒得如日中天。\n说到跨平台开发，就不得不提 WebView，WebView 可以说是最廉价的跨平台开发方案。我们知道，flutter 可以和 native 混合开发，它们可以互相调用。那么当我们进行混合开发的时候，如果需要使用 WebView，我们应该调用原生的 WebView 还是使用 flutter 自己实现 WebView 呢？如果用 flutter 自己实现 WebView，它的性能与 native 相比如何呢？今天我们就以 android 为例从几个不同的维度来实际测试一下！\nFlutter 实现 WebViewflutter 官方是没有 WebView 组件的，不过强大的 flutter-community 论坛考虑到广大开发者的需求，开发了 flutter_webview_plugin 插件，方便在 flutter 中使用使用 WebView。\n集成方式很简单，在 pubspec.yaml 文件中：\n1234dependencies:  flutter:    sdk: flutter  flutter_webview_plugin: ^0.3.0+2\n接下来所有的对比都是基于 Android 原生的 WebView 和 flutter_webview_plugin 插件，为了严谨，并未对第三方 WebView 作对比。\n\n测试手机：小米8SE 系统：Android 8.1.0\n\n加载速度对比测试网页打开的速度，只需要获取 WebView 在开始加载网页和网页加载完成时的时间戳，时间戳的差即为打开网页的时间，我们分别在 Android 原生和 flutter 中的相应位置打印 log：\n1234567891011webView?.webViewClient = object : WebViewClient() &#123;    override fun onPageStarted(view: WebView?, url: String?, favicon: Bitmap?) &#123;        Log.d(TAG, \"onPageStarted:\" + System.currentTimeMillis())        super.onPageStarted(view, url, favicon)    &#125;    override fun onPageFinished(view: WebView?, url: String?) &#123;        Log.d(TAG, \"onPageFinished:\" + System.currentTimeMillis())        super.onPageFinished(view, url)    &#125;&#125;\n12345678910111213flutterWebViewPlugin.onStateChanged.listen((state) &#123;  if (state.type == WebViewState.finishLoad) &#123;    print('finishLoad:' + DateTime.now().millisecondsSinceEpoch.toString());    setState(() &#123;      isLoad = false;    &#125;);  &#125; else if (state.type == WebViewState.startLoad) &#123;    print('startLoad:' + DateTime.now().millisecondsSinceEpoch.toString());    setState(() &#123;      isLoad = true;    &#125;);  &#125;&#125;);\n为了使差异更明显，我们选择较为复杂的 新浪首页 进行加载的对比，为了减小网络对加载速度的影响，我们让手机连接同一个网络，分别进行 10 次测试然后取平均值，另外，我们需要关闭 WebView 的缓存，防止缓存对加载速度产生影响：\n1webView?.settings?.cacheMode = WebSettings.LOAD_NO_CACHE\n123456789WebviewScaffold(  key: _scaffoldKey,  url: widget.url,  clearCache: true,  appCacheEnabled: false,  .  .  .);\n下面使笔者进行 10 次测试所得到的数据：\n\n\n\n\nAndroid WebView\nflutter_webview_plugin\n\n\n\n\n0\n2731\n2442\n\n\n1\n2502\n2623\n\n\n2\n2747\n2422\n\n\n3\n2652\n2323\n\n\n4\n2553\n2596\n\n\n5\n2645\n2379\n\n\n6\n2670\n2342\n\n\n7\n2691\n2218\n\n\n8\n3773\n2429\n\n\n9\n2631\n2453\n\n\navg\n2759.5\n2421.7\n\n\n\n可以发现，相同环境下 flutter_webview_plugin 的加载速度比 native WebView 略快，但是差异不明显，基本可以忽略。\n结论：flutter_webview_plugin 的加载速度比 native WebView 略快。\n内存占用对比可以使用 AndroidStudio 自带的 profiler 工具来进行占用内存的测试，我们在 flutter 程序中同时集成调用 native WebView 和 flutter_webview_plugin 来打开淘宝首页和新浪首页的方法，在程序刚运行的时候内存占用如下图：\n\n然后用 WebView 打开淘宝首页：\n\n用 flutter_webview_plugin 打开淘宝首页：\n\n可以发现，用 WebView 打开淘宝首页内存基本无变化，但是用 flutter_webview_plugin 打开淘宝首页内存有明显的增加，且波动较大。\n结论：flutter_webview_plugin 相对 native WebView 而言，占用内存较大。\nHTML5 兼容性对比可以在 html5test 中对浏览器的兼容性进行评分，通过测试发现 native WebView 和 flutter_webview_plugin 的得分分别如下：\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n发现在小米8SE手机上，native WebView 和 flutter_webview_plugin 的 html5 兼容性得分都是 501。\n结论：native WebView 和 flutter_webview_plugin 的 html5 兼容性无明显差异。\n总结我们对 native WebView 和 flutter_webview_plugin 分别进行了网页加载速度、占用内存和 html5 兼容性作了对比，发现 native WebView 占用内存更小，网页加载速度和 html5 的兼容性无明显差异。\n在实际使用中，由于 flutter_webview_plugin 并不存在于 widget 树中，所以不能在 flutter_webview_plugin 中使用如 snackbars, dialogs…这些通知交互 widget。但是 flutter_webview_plugin 具有跨平台的优势，如果需要同时 flutter 项目中同时在 Android 和 iOS 端使用 WebView，建议使用 flutter_webview_plugin，否则，建议使用 native WebView。\n\n再读一篇类似文章？推荐阅读姊妹篇：\nFlutter 与 iOS 的 WebView 对比\n\n\n如有任何知识产权、版权问题或理论错误，还请指正。https://xiangwushuo.github.io/posts/Flutter-Android-Webview本文作者 Zackratos，转载请注明原作者及以上信息。\n\n","dateCreated":"2019-02-28T15:01:31+08:00","dateModified":"2019-02-28T15:01:31+08:00","datePublished":"2019-02-28T15:01:31+08:00","description":"","headline":"Flutter 与 Android 的 WebView 对比","image":[],"mainEntityOfPage":{"@type":"WebPage","@id":"https://xiangwushuo.github.io/posts/Flutter-Android-Webview/"},"publisher":{"@type":"Organization","name":"享物说","sameAs":["https://www.xiangwushuo.com/","https://github.com/XiangWuShuo","https://weibo.com/u/6392701049","https://cn.linkedin.com/company/%E4%BA%AB%E7%89%A9%E8%AF%B4","https://www.lagou.com/gongsi/316814.html","mailto:developer@xiangwushuo.com"],"image":"https://www.gravatar.com/avatar/a5c1ed814269001a19150c512bc1efe0","logo":{"@type":"ImageObject","url":"https://www.gravatar.com/avatar/a5c1ed814269001a19150c512bc1efe0"}},"url":"https://xiangwushuo.github.io/posts/Flutter-Android-Webview/"}</script>
+    <script type="application/ld+json">{"@context":"http://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"享物说","sameAs":["https://www.xiangwushuo.com/","https://github.com/XiangWuShuo","https://weibo.com/u/6392701049","https://cn.linkedin.com/company/%E4%BA%AB%E7%89%A9%E8%AF%B4","https://www.lagou.com/gongsi/316814.html","mailto:developer@xiangwushuo.com"],"image":"https://www.gravatar.com/avatar/a5c1ed814269001a19150c512bc1efe0"},"articleBody":"前言自从 google 推出 flutter 跨平台开发框架以来，flutter 在各个技术论坛里被炒得如日中天。\n说到跨平台开发，就不得不提 WebView，WebView 可以说是最廉价的跨平台开发方案。我们知道，flutter 可以和 native 混合开发，它们可以互相调用。那么当我们进行混合开发的时候，如果需要使用 WebView，我们应该调用原生的 WebView 还是使用 flutter 自己实现 WebView 呢？如果用 flutter 自己实现 WebView，它的性能与 native 相比如何呢？今天我们就以 android 为例从几个不同的维度来实际测试一下！\nFlutter 实现 WebViewflutter 官方是没有 WebView 组件的，不过强大的 flutter-community 论坛考虑到广大开发者的需求，开发了 flutter_webview_plugin 插件，方便在 flutter 中使用使用 WebView。\n集成方式很简单，在 pubspec.yaml 文件中：\n1234dependencies:  flutter:    sdk: flutter  flutter_webview_plugin: ^0.3.0+2\n接下来所有的对比都是基于 Android 原生的 WebView 和 flutter_webview_plugin 插件，为了严谨，并未对第三方 WebView 作对比。\n\n测试手机：小米8SE 系统：Android 8.1.0\n\n加载速度对比测试网页打开的速度，只需要获取 WebView 在开始加载网页和网页加载完成时的时间戳，时间戳的差即为打开网页的时间，我们分别在 Android 原生和 flutter 中的相应位置打印 log：\n1234567891011webView?.webViewClient = object : WebViewClient() &#123;    override fun onPageStarted(view: WebView?, url: String?, favicon: Bitmap?) &#123;        Log.d(TAG, \"onPageStarted:\" + System.currentTimeMillis())        super.onPageStarted(view, url, favicon)    &#125;    override fun onPageFinished(view: WebView?, url: String?) &#123;        Log.d(TAG, \"onPageFinished:\" + System.currentTimeMillis())        super.onPageFinished(view, url)    &#125;&#125;\n12345678910111213flutterWebViewPlugin.onStateChanged.listen((state) &#123;  if (state.type == WebViewState.finishLoad) &#123;    print('finishLoad:' + DateTime.now().millisecondsSinceEpoch.toString());    setState(() &#123;      isLoad = false;    &#125;);  &#125; else if (state.type == WebViewState.startLoad) &#123;    print('startLoad:' + DateTime.now().millisecondsSinceEpoch.toString());    setState(() &#123;      isLoad = true;    &#125;);  &#125;&#125;);\n为了使差异更明显，我们选择较为复杂的 新浪首页 进行加载的对比，为了减小网络对加载速度的影响，我们让手机连接同一个网络，分别进行 10 次测试然后取平均值，另外，我们需要关闭 WebView 的缓存，防止缓存对加载速度产生影响：\n1webView?.settings?.cacheMode = WebSettings.LOAD_NO_CACHE\n123456789WebviewScaffold(  key: _scaffoldKey,  url: widget.url,  clearCache: true,  appCacheEnabled: false,  .  .  .);\n下面使笔者进行 10 次测试所得到的数据：\n\n\n\n\nAndroid WebView\nflutter_webview_plugin\n\n\n\n\n0\n2731\n2442\n\n\n1\n2502\n2623\n\n\n2\n2747\n2422\n\n\n3\n2652\n2323\n\n\n4\n2553\n2596\n\n\n5\n2645\n2379\n\n\n6\n2670\n2342\n\n\n7\n2691\n2218\n\n\n8\n3773\n2429\n\n\n9\n2631\n2453\n\n\navg\n2759.5\n2421.7\n\n\n\n可以发现，相同环境下 flutter_webview_plugin 的加载速度比 native WebView 略快，但是差异不明显，基本可以忽略。\n结论：flutter_webview_plugin 的加载速度比 native WebView 略快。\n内存占用对比可以使用 AndroidStudio 自带的 profiler 工具来进行占用内存的测试，我们在 flutter 程序中同时集成调用 native WebView 和 flutter_webview_plugin 来打开淘宝首页和新浪首页的方法，在程序刚运行的时候内存占用如下图：\n\n然后用 WebView 打开淘宝首页：\n\n用 flutter_webview_plugin 打开淘宝首页：\n\n可以发现，用 WebView 打开淘宝首页内存基本无变化，但是用 flutter_webview_plugin 打开淘宝首页内存有明显的增加，且波动较大。\n结论：flutter_webview_plugin 相对 native WebView 而言，占用内存较大。\nHTML5 兼容性对比可以在 html5test 中对浏览器的兼容性进行评分，通过测试发现 native WebView 和 flutter_webview_plugin 的得分分别如下：\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n发现在小米8SE手机上，native WebView 和 flutter_webview_plugin 的 html5 兼容性得分都是 501。\n结论：native WebView 和 flutter_webview_plugin 的 html5 兼容性无明显差异。\n总结我们对 native WebView 和 flutter_webview_plugin 分别进行了网页加载速度、占用内存和 html5 兼容性作了对比，发现 native WebView 占用内存更小，网页加载速度和 html5 的兼容性无明显差异。\n在实际使用中，由于 flutter_webview_plugin 并不存在于 widget 树中，所以不能在 flutter_webview_plugin 中使用如 snackbars, dialogs…这些通知交互 widget。但是 flutter_webview_plugin 具有跨平台的优势，如果需要同时 flutter 项目中同时在 Android 和 iOS 端使用 WebView，建议使用 flutter_webview_plugin，否则，建议使用 native WebView。\n\n再读一篇类似文章？推荐阅读姊妹篇：\nFlutter 与 iOS 的 WebView 对比\n\n\n如有任何知识产权、版权问题或理论错误，还请指正。https://xiangwushuo.github.io/posts/Flutter-Android-Webview本文作者 Zackratos，转载请注明原作者及以上信息。\n\n","dateCreated":"2019-02-28T15:01:31+08:00","dateModified":"2019-02-28T15:17:17+08:00","datePublished":"2019-02-28T15:01:31+08:00","description":"","headline":"Flutter 与 Android 的 WebView 对比","image":[],"mainEntityOfPage":{"@type":"WebPage","@id":"https://xiangwushuo.github.io/posts/Flutter-Android-Webview/"},"publisher":{"@type":"Organization","name":"享物说","sameAs":["https://www.xiangwushuo.com/","https://github.com/XiangWuShuo","https://weibo.com/u/6392701049","https://cn.linkedin.com/company/%E4%BA%AB%E7%89%A9%E8%AF%B4","https://www.lagou.com/gongsi/316814.html","mailto:developer@xiangwushuo.com"],"image":"https://www.gravatar.com/avatar/a5c1ed814269001a19150c512bc1efe0","logo":{"@type":"ImageObject","url":"https://www.gravatar.com/avatar/a5c1ed814269001a19150c512bc1efe0"}},"url":"https://xiangwushuo.github.io/posts/Flutter-Android-Webview/"}</script>
     <meta name="description" content="前言自从 google 推出 flutter 跨平台开发框架以来，flutter 在各个技术论坛里被炒得如日中天。 说到跨平台开发，就不得不提 WebView，WebView 可以说是最廉价的跨平台开发方案。我们知道，flutter 可以和 native 混合开发，它们可以互相调用。那么当我们进行混合开发的时候，如果需要使用 WebView，我们应该调用原生的 WebView 还是使用 flutt">
 <meta name="keywords" content="享物说,官方,技术,博客">
 <meta property="og:type" content="blog">
@@ -31,7 +31,7 @@
 <meta property="og:image" content="https://user-gold-cdn.xitu.io/2019/2/27/1692db12ba8b0c95?w=948&h=171&f=png&s=14653">
 <meta property="og:image" content="https://user-gold-cdn.xitu.io/2019/2/27/1692dd08f7f91682?w=1080&h=2244&f=png&s=181497">
 <meta property="og:image" content="https://user-gold-cdn.xitu.io/2019/2/27/1692dd42717f9fa9?w=1080&h=2244&f=png&s=179730">
-<meta property="og:updated_time" content="2019-02-28T07:01:31.878Z">
+<meta property="og:updated_time" content="2019-02-28T07:17:17.134Z">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="Flutter 与 Android 的 WebView 对比">
 <meta name="twitter:description" content="前言自从 google 推出 flutter 跨平台开发框架以来，flutter 在各个技术论坛里被炒得如日中天。 说到跨平台开发，就不得不提 WebView，WebView 可以说是最廉价的跨平台开发方案。我们知道，flutter 可以和 native 混合开发，它们可以互相调用。那么当我们进行混合开发的时候，如果需要使用 WebView，我们应该调用原生的 WebView 还是使用 flutt">
@@ -407,7 +407,7 @@
 <p><a href="https://xiangwushuo.github.io/posts/Flutter-iOS-WebView">Flutter 与 iOS 的 WebView 对比</a></p>
 <hr>
 <blockquote>
-<p>如有任何知识产权、版权问题或理论错误，还请指正。<br><a href="https://xiangwushuo.github.io/posts/Flutter-Android-Webview">https://xiangwushuo.github.io/posts/Flutter-Android-Webview</a><br>本文作者 Zackratos，转载请注明原作者及以上信息。</p>
+<p>如有任何知识产权、版权问题或理论错误，还请指正。<br><a href="https://xiangwushuo.github.io/posts/Flutter-Android-Webview">https://xiangwushuo.github.io/posts/Flutter-Android-Webview</a><br>本文作者 <a href="https://github.com/Zackratos" target="_blank" rel="noopener">Zackratos</a>，转载请注明原作者及以上信息。</p>
 </blockquote>
 
             
@@ -422,7 +422,8 @@
         <ul class="post-actions post-action-nav">
             <li class="post-action">
                 
-                    <a class="post-action-btn btn btn--disabled">
+                    
+                    <a class="post-action-btn btn btn--default tooltip--top" href="/posts/Flutter-iOS-WebView/" data-tooltip="Flutter 与 iOS 的 WebView 对比" aria-label="上一篇: Flutter 与 iOS 的 WebView 对比">
                 
                     <i class="fa fa-angle-left" aria-hidden="true"></i>
                     <span class="hide-xs hide-sm text-small icon-ml">上一篇</span>
@@ -431,7 +432,7 @@
             <li class="post-action">
                 
                     
-                    <a class="post-action-btn btn btn--default tooltip--top" href="/posts/Flutter-iOS-WebView/" data-tooltip="Flutter 与 iOS 的 WebView 对比" aria-label="下一篇: Flutter 与 iOS 的 WebView 对比">
+                    <a class="post-action-btn btn btn--default tooltip--top" href="/posts/CodeT-Share/" data-tooltip="上海 T 沙龙移动实践日：大流量⼩程序的架构与性能优化" aria-label="下一篇: 上海 T 沙龙移动实践日：大流量⼩程序的架构与性能优化">
                 
                     <span class="hide-xs hide-sm text-small icon-mr">下一篇</span>
                     <i class="fa fa-angle-right" aria-hidden="true"></i>
@@ -441,7 +442,7 @@
     </nav>
     <ul class="post-actions post-action-share">
         <li class="post-action hide-lg hide-md hide-sm">
-            <a class="post-action-btn btn btn--default btn-open-shareoptions" href="#btn-open-shareoptions" aria-label="Share this post">
+            <a class="post-action-btn btn btn--default btn-open-shareoptions" href="#btn-open-shareoptions" aria-label="Diesen Beitrag teilen">
                 <i class="fa fa-share-alt" aria-hidden="true"></i>
             </a>
         </li>
@@ -481,7 +482,7 @@
         
         <li class="post-action">
             
-                <a class="post-action-btn btn btn--default" href="#" aria-label="Back to top">
+                <a class="post-action-btn btn btn--default" href="#" aria-label="Nach oben">
             
                 <i class="fa fa-list" aria-hidden="true"></i>
             </a>
@@ -517,7 +518,8 @@
         <ul class="post-actions post-action-nav">
             <li class="post-action">
                 
-                    <a class="post-action-btn btn btn--disabled">
+                    
+                    <a class="post-action-btn btn btn--default tooltip--top" href="/posts/Flutter-iOS-WebView/" data-tooltip="Flutter 与 iOS 的 WebView 对比" aria-label="上一篇: Flutter 与 iOS 的 WebView 对比">
                 
                     <i class="fa fa-angle-left" aria-hidden="true"></i>
                     <span class="hide-xs hide-sm text-small icon-ml">上一篇</span>
@@ -526,7 +528,7 @@
             <li class="post-action">
                 
                     
-                    <a class="post-action-btn btn btn--default tooltip--top" href="/posts/Flutter-iOS-WebView/" data-tooltip="Flutter 与 iOS 的 WebView 对比" aria-label="下一篇: Flutter 与 iOS 的 WebView 对比">
+                    <a class="post-action-btn btn btn--default tooltip--top" href="/posts/CodeT-Share/" data-tooltip="上海 T 沙龙移动实践日：大流量⼩程序的架构与性能优化" aria-label="下一篇: 上海 T 沙龙移动实践日：大流量⼩程序的架构与性能优化">
                 
                     <span class="hide-xs hide-sm text-small icon-mr">下一篇</span>
                     <i class="fa fa-angle-right" aria-hidden="true"></i>
@@ -536,7 +538,7 @@
     </nav>
     <ul class="post-actions post-action-share">
         <li class="post-action hide-lg hide-md hide-sm">
-            <a class="post-action-btn btn btn--default btn-open-shareoptions" href="#btn-open-shareoptions" aria-label="Share this post">
+            <a class="post-action-btn btn btn--default btn-open-shareoptions" href="#btn-open-shareoptions" aria-label="Diesen Beitrag teilen">
                 <i class="fa fa-share-alt" aria-hidden="true"></i>
             </a>
         </li>
@@ -576,7 +578,7 @@
         
         <li class="post-action">
             
-                <a class="post-action-btn btn btn--default" href="#" aria-label="Back to top">
+                <a class="post-action-btn btn btn--default" href="#" aria-label="Nach oben">
             
                 <i class="fa fa-list" aria-hidden="true"></i>
             </a>
@@ -697,8 +699,8 @@
                 <div class="media">
                     
                     <div class="media-body">
-                        <a class="link-unstyled" href="https://xiangwushuo.github.io/posts/Flutter-Android-Webview/">
-                            <h3 class="media-heading">Flutter 与 Android 的 WebView 对比</h3>
+                        <a class="link-unstyled" href="https://xiangwushuo.github.io/posts/Flutter-iOS-WebView/">
+                            <h3 class="media-heading">Flutter 与 iOS 的 WebView 对比</h3>
                         </a>
                         <span class="media-meta">
                             <span class="media-date text-small">
@@ -716,8 +718,8 @@
                 <div class="media">
                     
                     <div class="media-body">
-                        <a class="link-unstyled" href="https://xiangwushuo.github.io/posts/Flutter-iOS-WebView/">
-                            <h3 class="media-heading">Flutter 与 iOS 的 WebView 对比</h3>
+                        <a class="link-unstyled" href="https://xiangwushuo.github.io/posts/Flutter-Android-Webview/">
+                            <h3 class="media-heading">Flutter 与 Android 的 WebView 对比</h3>
                         </a>
                         <span class="media-meta">
                             <span class="media-date text-small">
